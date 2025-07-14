@@ -7,3 +7,5 @@ venv/*
 upbit.txt
 build/*
 upbit.key
+upbit_keys.txt
+.DS_Store
