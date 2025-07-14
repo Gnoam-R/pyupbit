@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-비트코인 자동 매매 프로그램
+암호화폐 자동 매매 프로그램
 
 이 프로그램은 pyupbit 라이브러리를 활용하여 다음 기능들을 구현합니다:
 1. 실시간 시세 모니터링
@@ -77,17 +77,19 @@ def calculate_macd(prices, fast=12, slow=26, signal=9):
     macd_histogram = macd - macd_signal
     return macd, macd_signal, macd_histogram
 
-class BitcoinAutoTrader:
-    def __init__(self, access_key: str, secret_key: str):
+class CryptoAutoTrader:
+    def __init__(self, access_key: str, secret_key: str, target_coin: str = "BTC"):
         """
-        비트코인 자동 매매 클래스 초기화
+        암호화폐 자동 매매 클래스 초기화
         
         Args:
             access_key: 업비트 API 액세스 키
             secret_key: 업비트 API 시크릿 키
+            target_coin: 대상 코인 (BTC, ETH, MASK, SOL, PEPE 등)
         """
         self.upbit = pyupbit.Upbit(access_key, secret_key)
-        self.target_ticker = "KRW-BTC"
+        self.target_coin = target_coin
+        self.target_ticker = f"KRW-{target_coin}"
         self.running = False
         
         # 매매 설정
@@ -124,21 +126,30 @@ class BitcoinAutoTrader:
             "total_trades": 0
         }
         
+        # 지원 코인 목록
+        self.supported_coins = {
+            "BTC": {"name": "비트코인", "min_order": 5000},
+            "ETH": {"name": "이더리움", "min_order": 5000},
+            "MASK": {"name": "마스크 네트워크", "min_order": 5000},
+            "SOL": {"name": "솔라나", "min_order": 5000},
+            "PEPE": {"name": "페페", "min_order": 5000}
+        }
+        
         # 웹소켓 매니저
         self.websocket_manager = None
         
-        logger.info("BitcoinAutoTrader 초기화 완료")
+        logger.info(f"CryptoAutoTrader 초기화 완료 - 대상 코인: {self.supported_coins.get(target_coin, {}).get('name', target_coin)}")
         
     def get_account_info(self) -> Dict:
         """계정 정보 조회"""
         try:
             balances = self.upbit.get_balances()
             krw_balance = self.upbit.get_balance("KRW")
-            btc_balance = self.upbit.get_balance("BTC")
+            coin_balance = self.upbit.get_balance(self.target_coin)
             
             return {
                 "krw_balance": krw_balance,
-                "btc_balance": btc_balance,
+                "coin_balance": coin_balance,
                 "balances": balances
             }
         except Exception as e:
@@ -327,7 +338,7 @@ class BitcoinAutoTrader:
                     "buy_time": datetime.datetime.now()
                 })
                 
-                logger.info(f"매수 주문 성공: 가격={adjusted_price:,.0f}원, 수량={buy_volume:.8f}BTC, "
+                logger.info(f"매수 주문 성공: 가격={adjusted_price:,.0f}원, 수량={buy_volume:.8f}{self.target_coin}, "
                            f"총액={buy_amount:,.0f}원")
                 return True
             else:
@@ -366,7 +377,7 @@ class BitcoinAutoTrader:
                     self.position["loss_count"] += 1
                 
                 logger.info(f"매도 주문 성공 ({reason}): 가격={adjusted_price:,.0f}원, "
-                           f"수량={sell_volume:.8f}BTC, 수익={profit:,.0f}원 ({profit_rate:.2%})")
+                           f"수량={sell_volume:.8f}{self.target_coin}, 수익={profit:,.0f}원 ({profit_rate:.2%})")
                 
                 # 포지션 정리 (부분 매도인 경우)
                 if self.config["sell_ratio"] == 1.0:
@@ -400,12 +411,12 @@ class BitcoinAutoTrader:
             print(f"현재 시간: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"현재 가격: {current_price:,.0f}원")
             print(f"원화 잔고: {account_info['krw_balance']:,.0f}원")
-            print(f"BTC 잔고: {account_info['btc_balance']:.8f}BTC")
+            print(f"{self.target_coin} 잔고: {account_info['coin_balance']:.8f}{self.target_coin}")
             
             if self.position["is_holding"]:
                 profit_rate = (current_price - self.position["buy_price"]) / self.position["buy_price"]
                 print(f"포지션: 보유 중 (매수가: {self.position['buy_price']:,.0f}원, "
-                      f"수익률: {profit_rate:.2%})")
+                      f"수익률: {profit_rate:.2%}, 코인: {self.target_coin})")
             else:
                 print("포지션: 없음")
             
@@ -537,6 +548,32 @@ class BitcoinAutoTrader:
         except Exception as e:
             logger.error(f"설정 로드 오류: {e}")
 
+def select_coin():
+    """거래할 코인 선택"""
+    # 환경 변수에서 선택된 코인 확인
+    selected_coin = os.environ.get('SELECTED_COIN')
+    if selected_coin:
+        return selected_coin
+    
+    supported_coins = {
+        "1": ("BTC", "비트코인"),
+        "2": ("ETH", "이더리움"),
+        "3": ("MASK", "마스크 네트워크"),
+        "4": ("SOL", "솔라나"),
+        "5": ("PEPE", "페페")
+    }
+    
+    print("\n=== 거래할 코인을 선택하세요 ===")
+    for key, (symbol, name) in supported_coins.items():
+        print(f"{key}. {name} ({symbol})")
+    
+    while True:
+        choice = input("\n번호를 선택하세요 (1-5): ").strip()
+        if choice in supported_coins:
+            return supported_coins[choice][0]
+        else:
+            print("올바른 번호를 입력하세요.")
+
 def main():
     """메인 함수"""
     # API 키 설정 (실제 사용 시 환경변수나 별도 파일에서 로드)
@@ -556,8 +593,11 @@ def main():
         print(f"API 키 로드 오류: {e}")
         return
     
+    # 코인 선택
+    selected_coin = select_coin()
+    
     # 트레이더 초기화
-    trader = BitcoinAutoTrader(ACCESS_KEY, SECRET_KEY)
+    trader = CryptoAutoTrader(ACCESS_KEY, SECRET_KEY, selected_coin)
     
     # 설정 로드
     trader.load_config()
@@ -568,9 +608,9 @@ def main():
         print("계정 정보 조회 실패. API 키를 확인하세요.")
         return
     
-    print("=== 비트코인 자동 매매 프로그램 ===")
+    print(f"=== {trader.supported_coins.get(selected_coin, {}).get('name', selected_coin)} 자동 매매 프로그램 ===")
     print(f"원화 잔고: {account_info['krw_balance']:,.0f}원")
-    print(f"BTC 잔고: {account_info['btc_balance']:.8f}BTC")
+    print(f"{selected_coin} 잔고: {account_info['coin_balance']:.8f}{selected_coin}")
     
     # 사용자 입력
     while True:
