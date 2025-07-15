@@ -100,13 +100,22 @@ class TradingEngine:
     def execute_buy_order(self, current_price: float) -> bool:
         """매수 주문 실행"""
         config = self.config_manager.get_config()
+        
+        # 매수 전 계산
+        if hasattr(self.asset_manager, 'get_balance'):
+            krw_balance = self.asset_manager.get_balance("KRW")
+        else:
+            account_info = self.asset_manager.get_account_info()
+            krw_balance = account_info.get("krw_balance", 0) if account_info else 0
+            
+        buy_amount = krw_balance * config["buy_ratio"]
+        buy_volume = buy_amount / current_price
+        
+        # 거래 실행
         result = self.trade_executor.execute_buy_order(current_price, config, self.asset_manager)
         
         if result:
-            # 포지션 매니저에 포지션 오픈 기록
-            krw_balance = self.asset_manager.get_balance("KRW")
-            buy_amount = krw_balance * config["buy_ratio"]
-            buy_volume = buy_amount / current_price
+            # 포지션 매니저에 포지션 오픈 기록 (실제 거래된 정보로)
             self.strategy.get_position_manager().open_position(current_price, buy_volume)
         
         return result
@@ -115,17 +124,22 @@ class TradingEngine:
         """매도 주문 실행"""
         config = self.config_manager.get_config()
         position = self.strategy.get_position_manager().get_position_info()
+        
+        # 매도 전 계산
+        sell_volume = position["buy_amount"] * config["sell_ratio"]
+        
+        # 실제 보유량 체크 (가상 모드에서)
+        if hasattr(self.asset_manager, 'get_balance'):
+            actual_balance = self.asset_manager.get_balance(self.target_coin)
+            if sell_volume > actual_balance:
+                sell_volume = actual_balance
+                logger.warning(f"매도 수량 조정: {sell_volume:.8f}{self.target_coin} (보유량 전량)")
+        
+        # 거래 실행
         result = self.trade_executor.execute_sell_order(current_price, config, position, self.asset_manager)
         
         if result:
-            # 포지션 매니저에 포지션 클로즈 기록
-            sell_volume = position["buy_amount"] * config["sell_ratio"]
-            # 실제 보유량 체크 (가상 모드에서)
-            if hasattr(self.asset_manager, 'get_balance'):
-                actual_balance = self.asset_manager.get_balance(self.target_coin)
-                if sell_volume > actual_balance:
-                    sell_volume = actual_balance
-            
+            # 포지션 매니저에 포지션 클로즈 기록 (실제 거래된 수량으로)
             self.strategy.get_position_manager().close_position(current_price, sell_volume, reason)
         
         return result

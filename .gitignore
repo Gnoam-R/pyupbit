@@ -9,3 +9,13 @@ build/*
 upbit.key
 upbit_keys.txt
 .DS_Store
+
+# Log files
+*.log
+logs/
+bitcoin_trader.log
+test_trading_simulator.log
+
+# Config files
+trading_config.json
+test_results_*.json
