@@ -12,3 +12,7 @@
 2025-07-15 21:24:11,273 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 페페
 2025-07-15 21:24:11,275 - test_trading_simulator - INFO - 시드머니: 1,000,000원
 2025-07-15 21:24:12,763 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 시작
+2025-07-15 22:13:17,663 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 중지
+2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 멀티 코인 테스트 시뮬레이터 초기화 완료
+2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 지원 코인: BTC, ETH, MASK, SOL, PEPE
