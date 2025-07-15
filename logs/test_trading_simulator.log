@@ -1,0 +1,14 @@
+2025-07-15 20:33:47,260 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-15 20:33:47,260 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 20:33:52,995 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 마스크 네트워크
+2025-07-15 20:33:52,995 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 20:33:58,599 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-15 20:33:58,599 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 20:33:58,599 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 시작
+2025-07-15 20:37:10,752 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 페페
+2025-07-15 20:37:10,752 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 20:37:20,069 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 시작
+2025-07-15 21:05:07,075 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 중지
+2025-07-15 21:24:11,273 - test_trading_simulator - INFO - 테스트 모드 시뮬레이터 초기화 완료 - 대상 코인: 페페
+2025-07-15 21:24:11,275 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 21:24:12,763 - test_trading_simulator - INFO - [테스트 모드] 자동 매매 시작
