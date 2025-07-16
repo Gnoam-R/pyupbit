@@ -19,3 +19,6 @@ test_trading_simulator.log
 # Config files
 trading_config.json
 test_results_*.json
+
+# Data files
+balance_data/

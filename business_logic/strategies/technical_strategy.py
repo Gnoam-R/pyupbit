@@ -68,8 +68,8 @@ class TechnicalTradingStrategy:
             bb_signal = current_price <= indicators['bb_lower'].iloc[-1]
             
             # 스토캐스틱 과매도
-            stoch_signal = (indicators['stoch_k'].iloc[-1] < 20 and 
-                           indicators['stoch_d'].iloc[-1] < 20)
+            stoch_signal = (indicators['stoch_k'].iloc[-1] < self.config.get('stoch_oversold', 20) and 
+                           indicators['stoch_d'].iloc[-1] < self.config.get('stoch_oversold', 20))
             
             # MACD 상승 전환
             macd_signal = (indicators['macd'].iloc[-1] > indicators['macd_signal'].iloc[-1] and
@@ -84,8 +84,10 @@ class TechnicalTradingStrategy:
             buy_signal = sum(signals) >= threshold
             
             if buy_signal:
-                logger.info(f"매수 신호 발생 (임계값: {threshold}): MA={ma_signal}, RSI={rsi_signal}, BB={bb_signal}, "
+                logger.info(f"📈 매수 신호 발생 (임계값: {threshold}): MA={ma_signal}, RSI={rsi_signal}, BB={bb_signal}, "
                            f"STOCH={stoch_signal}, MACD={macd_signal}, TREND={price_trend}")
+                logger.info(f"📊 현재 지표 - RSI: {indicators['rsi'].iloc[-1]:.1f}, "
+                           f"가격: {current_price:,.0f}원, MA단기: {indicators['ma_short'].iloc[-1]:.0f}, MA장기: {indicators['ma_long'].iloc[-1]:.0f}")
             
             return buy_signal
         except Exception as e:
@@ -108,8 +110,8 @@ class TechnicalTradingStrategy:
             bb_signal = current_price >= indicators['bb_upper'].iloc[-1]
             
             # 스토캐스틱 과매수
-            stoch_signal = (indicators['stoch_k'].iloc[-1] > 80 and 
-                           indicators['stoch_d'].iloc[-1] > 80)
+            stoch_signal = (indicators['stoch_k'].iloc[-1] > self.config.get('stoch_overbought', 80) and 
+                           indicators['stoch_d'].iloc[-1] > self.config.get('stoch_overbought', 80))
             
             # MACD 하락 전환
             macd_signal = (indicators['macd'].iloc[-1] < indicators['macd_signal'].iloc[-1] and
@@ -124,8 +126,10 @@ class TechnicalTradingStrategy:
             sell_signal = sum(signals) >= threshold
             
             if sell_signal:
-                logger.info(f"매도 신호 발생 (임계값: {threshold}): MA={ma_signal}, RSI={rsi_signal}, BB={bb_signal}, "
+                logger.info(f"📉 매도 신호 발생 (임계값: {threshold}): MA={ma_signal}, RSI={rsi_signal}, BB={bb_signal}, "
                            f"STOCH={stoch_signal}, MACD={macd_signal}, TREND={price_trend}")
+                logger.info(f"📊 현재 지표 - RSI: {indicators['rsi'].iloc[-1]:.1f}, "
+                           f"가격: {current_price:,.0f}원, MA단기: {indicators['ma_short'].iloc[-1]:.0f}, MA장기: {indicators['ma_long'].iloc[-1]:.0f}")
             
             return sell_signal
         except Exception as e:

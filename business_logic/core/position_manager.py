@@ -1,6 +1,7 @@
 import datetime
 import logging
 from typing import Dict, Optional
+from ..utils.format_helper import format_profit_rate, format_currency, format_statistics_log
 
 logger = logging.getLogger(__name__)
 
@@ -8,17 +9,21 @@ logger = logging.getLogger(__name__)
 class PositionManager:
     """포지션 관리 클래스"""
     
-    def __init__(self):
-        self.position = {
-            "is_holding": False,
-            "buy_price": 0,
-            "buy_amount": 0,
-            "buy_time": None,
-            "total_profit": 0,
-            "win_count": 0,
-            "loss_count": 0,
-            "total_trades": 0
-        }
+    def __init__(self, saved_position: Dict = None):
+        if saved_position:
+            self.position = saved_position
+            logger.info(f"💾 포지션 정보 복원: 거래 수={saved_position['total_trades']}, 수익={saved_position['total_profit']:,.0f}원")
+        else:
+            self.position = {
+                "is_holding": False,
+                "buy_price": 0,
+                "buy_amount": 0,
+                "buy_time": None,
+                "total_profit": 0,
+                "win_count": 0,
+                "loss_count": 0,
+                "total_trades": 0
+            }
     
     def open_position(self, price: float, amount: float):
         """포지션 열기"""
@@ -28,11 +33,19 @@ class PositionManager:
             "buy_amount": amount,
             "buy_time": datetime.datetime.now()
         })
-        logger.info(f"포지션 열기: 가격={price:,.0f}, 수량={amount:.8f}")
+        logger.info(f"📈 포지션 열기: 가격={format_currency(price)}, 수량={amount:.8f}")
+        stats = self.get_statistics()
+        if stats['total_trades'] > 0:
+            logger.info(format_statistics_log(stats))
     
-    def close_position(self, sell_price: float, sell_amount: float, reason: str = "signal"):
+    def close_position(self, sell_price: float, sell_amount: float, actual_balance: float, reason: str = "signal"):
         """포지션 닫기"""
         if not self.position["is_holding"]:
+            logger.warning("포지션이 없는 상태에서 close_position 호출됨")
+            return
+        
+        if self.position["buy_price"] == 0:
+            logger.error("매수 가격이 0인 상태에서 close_position 호출됨")
             return
         
         profit = (sell_price - self.position["buy_price"]) * sell_amount
@@ -47,9 +60,10 @@ class PositionManager:
         else:
             self.position["loss_count"] += 1
         
-        # 포지션 정리
-        remaining_amount = self.position["buy_amount"] - sell_amount
+        # 포지션 정리 - 실제 잔고 기준으로 동기화
+        remaining_amount = actual_balance - sell_amount
         
+        # 매우 작은 잔량이거나 0이면 완전 정리
         if remaining_amount <= 0.00000001:
             self.position.update({
                 "is_holding": False,
@@ -57,10 +71,15 @@ class PositionManager:
                 "buy_amount": 0,
                 "buy_time": None
             })
-            logger.info(f"포지션 완전 정리 ({reason}): 수익={profit:,.0f}원 ({profit_rate:.2%})")
+            logger.info(f"📊 포지션 완전 정리 ({reason}): 수익={format_currency(profit)} ({format_profit_rate(profit_rate)})")
         else:
+            # 실제 잔고 기준으로 포지션 동기화
             self.position["buy_amount"] = remaining_amount
-            logger.info(f"부분 매도 완료 ({reason}): 수익={profit:,.0f}원, 남은 수량={remaining_amount:.8f}")
+            logger.info(f"📊 부분 매도 완료 ({reason}): 수익={format_currency(profit)}, 남은 포지션={remaining_amount:.8f}")
+        
+        # 업데이트된 통계 출력
+        updated_stats = self.get_statistics()
+        logger.info(format_statistics_log(updated_stats))
     
     def check_stop_loss_take_profit(self, current_price: float, config: Dict) -> Optional[str]:
         """손절/익절 확인"""
@@ -71,10 +90,10 @@ class PositionManager:
         profit_rate = (current_price - buy_price) / buy_price
         
         if profit_rate <= -config["stop_loss"]:
-            logger.info(f"손절 조건 충족: 수익률 {profit_rate:.2%}")
+            logger.info(f"🔻 손절 조건 충족: 수익률 {format_profit_rate(profit_rate)} (기준: {format_profit_rate(-config['stop_loss'])})")
             return "stop_loss"
         elif profit_rate >= config["take_profit"]:
-            logger.info(f"익절 조건 충족: 수익률 {profit_rate:.2%}")
+            logger.info(f"🔺 익절 조건 충족: 수익률 {format_profit_rate(profit_rate)} (기준: {format_profit_rate(config['take_profit'])})")
             return "take_profit"
         
         return None

@@ -17,6 +17,7 @@ from business_logic.core.asset_manager import RealAssetManager
 from business_logic.executors.trading_executor import RealTradeExecutor
 from business_logic.utils.coin_selector import select_coin, get_coin_name
 from business_logic.utils.logger import setup_logger
+from business_logic.utils.format_helper import format_profit_rate, format_currency, format_percentage
 
 # 로깅 설정
 logger = setup_logger('bitcoin_auto_trader', 'bitcoin_trader.log')

@@ -18,6 +18,7 @@ from business_logic.core.asset_manager import VirtualAssetManager
 from business_logic.executors.trading_executor import VirtualTradeExecutor
 from business_logic.utils.coin_selector import select_coin, get_coin_name
 from business_logic.utils.logger import setup_logger
+from business_logic.utils.format_helper import format_profit_rate, format_currency, format_percentage
 
 # 로깅 설정
 logger = setup_logger('test_trading_simulator', 'test_trading_simulator.log')
@@ -26,19 +27,19 @@ logger = setup_logger('test_trading_simulator', 'test_trading_simulator.log')
 class TestTradingSimulator:
     """테스트 모드 트레이딩 시뮬레이터"""
     
-    def __init__(self, target_coin: str, seed_money: float = 1000000):
+    def __init__(self, target_coin: str, seed_money: float = 10000000):
         """
         시뮬레이터 초기화
         
         Args:
             target_coin: 대상 코인 심볼
-            seed_money: 초기 시드머니 (기본 100만원)
+            seed_money: 초기 시드머니 (기본 천만원)
         """
         self.target_coin = target_coin
         self.seed_money = seed_money
         
-        # 가상 모드 매니저들 초기화
-        self.asset_manager = VirtualAssetManager(target_coin, seed_money)
+        # 가상 모드 매니저들 초기화 (지속성 지원)
+        self.asset_manager = VirtualAssetManager(target_coin, seed_money, use_persistence=True)
         self.trade_executor = VirtualTradeExecutor(target_coin)
         
         # 트레이딩 엔진 초기화 (테스트 모드)
@@ -103,25 +104,59 @@ class TestTradingSimulator:
         """현재 상태 출력"""
         self.engine.print_status()
     
+    def save_balance(self):
+        """현재 잔고 상태 저장"""
+        try:
+            current_price = self.engine.get_current_price()
+            if current_price:
+                position_info = self.engine.get_position_info()
+                stats = self.engine.get_statistics()
+                self.asset_manager.save_balance(position_info, stats, current_price)
+                logger.info("💾 잔고 정보 저장 완료")
+        except Exception as e:
+            logger.error(f"잔고 저장 오류: {e}")
+    
+    def get_balance_summary(self):
+        """저장된 잔고 요약 정보 출력"""
+        try:
+            summary = self.asset_manager.get_balance_summary()
+            print(summary)
+        except Exception as e:
+            logger.error(f"잔고 요약 출력 오류: {e}")
+    
+    def reset_balance(self, initial_krw: float = 10000000):
+        """잔고 초기화"""
+        try:
+            self.asset_manager.reset_balance(initial_krw)
+            self.seed_money = initial_krw
+            # 엔진 재시작
+            self.engine.stop_trading()
+            logger.info("잔고 초기화 완료. 프로그램을 다시 시작하세요.")
+        except Exception as e:
+            logger.error(f"잔고 초기화 오류: {e}")
+
     def print_final_report(self):
         """최종 테스트 결과 리포트 출력"""
         try:
+            # 잔고 저장
+            self.save_balance()
+            
             account_info = self.get_account_summary()
             stats = self.engine.get_statistics()
             
             print("\n" + "=" * 80)
             print("📊 최종 테스트 결과 리포트")
             print("=" * 80)
-            print(f"시드머니: {self.seed_money:,.0f}원")
-            print(f"최종 자산: {account_info.get('total_value', 0):,.0f}원")
-            print(f"총 수익/손실: {account_info.get('profit_loss', 0):,.0f}원 ({account_info.get('profit_rate', 0):.2f}%)")
+            print(f"시드머니: {format_currency(self.seed_money)}")
+            print(f"최종 자산: {format_currency(account_info.get('total_value', 0))}")
+            print(f"총 수익/손실: {format_currency(account_info.get('profit_loss', 0))} ({format_percentage(account_info.get('profit_rate', 0))})")
             print(f"총 거래 수: {stats['total_trades']}")
             
             if stats['total_trades'] > 0:
-                print(f"승률: {stats['win_count']}/{stats['total_trades']} ({stats['win_rate']:.1f}%)")
-                print(f"평균 거래당 수익: {stats['avg_profit_per_trade']:,.0f}원")
+                print(f"승률: {stats['win_count']}/{stats['total_trades']} ({format_percentage(stats['win_rate'])})")
+                print(f"평균 거래당 수익: {format_currency(stats['avg_profit_per_trade'])}")
             
-            print(f"거래 수익: {stats['total_profit']:,.0f}원")
+            print(f"거래 수익: {format_currency(stats['total_profit'])}")
             print("=" * 80)
             
             # 거래 내역 출력 (최근 10건)
@@ -206,11 +241,11 @@ def main():
     print("🧪 가상 암호화폐 트레이딩 시뮬레이터 시작")
     print("💡 실제 거래 없이 가상 자산으로 매매 전략을 테스트합니다.")
     
-    # 코인 선택
-    selected_coin = select_coin()
+    # 기본 코인을 BTC로 설정
+    selected_coin = "BTC"
     
     # 시드머니 설정
-    seed_money = 1000000  # 100만원
+    seed_money = 10000000  # 1000만원
     
     # 시뮬레이터 초기화
     simulator = TestTradingSimulator(selected_coin, seed_money)
@@ -220,13 +255,15 @@ def main():
     
     # 사용자 입력 처리
     print("\n📋 사용 가능한 명령어:")
-    print("  start  - 테스트 시작")
-    print("  stop   - 테스트 중지")
-    print("  status - 현재 상태 확인")
-    print("  report - 최종 리포트 보기")
-    print("  save   - 결과 저장")
-    print("  config - 현재 설정 보기")
-    print("  quit   - 프로그램 종료")
+    print("  start    - 테스트 시작")
+    print("  stop     - 테스트 중지")
+    print("  status   - 현재 상태 확인")
+    print("  report   - 최종 리포트 보기")
+    print("  save     - 결과 저장")
+    print("  config   - 현재 설정 보기")
+    print("  balance  - 저장된 잔고 요약 보기")
+    print("  reset    - 잔고 초기화 (1000만원)")
+    print("  quit     - 프로그램 종료")
     
     while True:
         try:
@@ -254,6 +291,17 @@ def main():
                 config = simulator.get_config()
                 for key, value in config.items():
                     print(f"  {key}: {value}")
+            
+            elif command == "balance":
+                print("💰 저장된 잔고 요약:")
+                simulator.get_balance_summary()
+            
+            elif command == "reset":
+                confirm = input("⚠️ 잔고를 초기화하시겠습니까? (y/n): ").strip().lower()
+                if confirm == 'y':
+                    simulator.reset_balance()
+                else:
+                    print("❌ 초기화를 취소했습니다.")
                     
             elif command == "quit":
                 print("👋 프로그램을 종료합니다...")

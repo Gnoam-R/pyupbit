@@ -1,3 +1,9 @@
 2025-07-15 20:30:12,313 - bitcoin_auto_trader - INFO - CryptoAutoTrader 초기화 완료 - 대상 코인: 비트코인
 2025-07-15 20:36:05,609 - bitcoin_auto_trader - INFO - CryptoAutoTrader 초기화 완료 - 대상 코인: 비트코인
 2025-07-15 20:36:05,800 - bitcoin_auto_trader - INFO - 자동 매매 중지
+2025-07-15 22:48:11,323 - bitcoin_auto_trader - INFO - 파일에서 API 키 로드 완료
+2025-07-15 22:48:11,323 - bitcoin_auto_trader - INFO - 실제 트레이더 초기화 완료 - 대상 코인: 비트코인
+2025-07-15 22:48:11,549 - bitcoin_auto_trader - INFO - API 키 검증 성공
+2025-07-16 22:18:06,644 - bitcoin_auto_trader - INFO - 파일에서 API 키 로드 완료
+2025-07-16 22:18:06,644 - bitcoin_auto_trader - INFO - 실제 트레이더 초기화 완료 - 대상 코인: 비트코인
+2025-07-16 22:18:06,880 - bitcoin_auto_trader - INFO - API 키 검증 성공

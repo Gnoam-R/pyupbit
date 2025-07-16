@@ -16,3 +16,21 @@
 2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 멀티 코인 테스트 시뮬레이터 초기화 완료
 2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 시드머니: 1,000,000원
 2025-07-15 22:15:33,281 - multi_coin_simulator - INFO - 지원 코인: BTC, ETH, MASK, SOL, PEPE
+2025-07-15 22:48:32,905 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 페페
+2025-07-15 22:48:32,905 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-15 23:20:25,201 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 이더리움
+2025-07-15 23:20:25,202 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-16 22:39:53,556 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-16 22:39:53,558 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-16 22:41:48,981 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-16 22:41:48,981 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-16 22:49:59,996 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-16 22:49:59,996 - test_trading_simulator - INFO - 시드머니: 1,000,000원
+2025-07-17 00:40:08,079 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-17 00:40:08,079 - test_trading_simulator - INFO - 시드머니: 10,000,000원
+2025-07-17 07:43:00,065 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-17 07:43:00,065 - test_trading_simulator - INFO - 시드머니: 10,000,000원
+2025-07-17 08:14:33,174 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-17 08:14:33,174 - test_trading_simulator - INFO - 시드머니: 10,000,000원
+2025-07-17 08:41:11,895 - test_trading_simulator - INFO - 테스트 시뮬레이터 초기화 완료 - 대상 코인: 비트코인
+2025-07-17 08:41:11,895 - test_trading_simulator - INFO - 시드머니: 10,000,000원

@@ -11,8 +11,12 @@ def setup_logger(name: str, log_file: str = None, level=logging.INFO) -> logging
     
     # 로그 디렉토리 생성
     log_dir = "logs"
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    try:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+    except Exception as e:
+        print(f"로그 디렉토리 생성 실패: {e}")
+        log_dir = "."  # 현재 디렉토리로 폴백
     
     log_path = os.path.join(log_dir, log_file)
     

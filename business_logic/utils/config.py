@@ -10,21 +10,38 @@ class TradingConfig:
     """트레이딩 설정 관리 클래스"""
     
     DEFAULT_CONFIG = {
-        "buy_ratio": 0.1,
-        "sell_ratio": 0.5,
-        "stop_loss": 0.03,
-        "take_profit": 0.05,
+        # 매매 비율 설정 (균형있는 포지션 관리)
+        "buy_ratio": 0.2,           # 보유 원화의 20% 매수 (더 적극적)
+        "sell_ratio": 0.3,          # 보유 코인의 30% 매도 (분할 매도)
+        
+        # 리스크 관리 (위험 대비 수익 개선)
+        "stop_loss": 0.05,          # 5% 손절 (변동성 고려)
+        "take_profit": 0.08,        # 8% 익절 (1:1.6 비율)
+        
+        # 주문 설정
         "min_order_amount": 5000,
         "trading_interval": 60,
-        "ma_short": 5,
-        "ma_long": 20,
+        
+        # 이동평균선 (신호 개선)
+        "ma_short": 7,              # 단기 MA (노이즈 감소)
+        "ma_long": 21,              # 장기 MA (3주 평균)
+        
+        # RSI 설정 (과매수/과매도 개선)
         "rsi_period": 14,
-        "rsi_oversold": 30,
-        "rsi_overbought": 70,
+        "rsi_oversold": 25,         # 과매도 기준 강화
+        "rsi_overbought": 75,       # 과매수 기준 강화
+        
+        # 볼린저 밴드
         "bb_period": 20,
         "bb_std": 2,
+        
+        # 스토캐스틱 (더 민감한 설정)
         "stoch_k": 14,
         "stoch_d": 3,
+        "stoch_oversold": 20,       # 스토캐스틱 과매도 기준
+        "stoch_overbought": 80,     # 스토캐스틱 과매수 기준
+        
+        # MACD
         "macd_fast": 12,
         "macd_slow": 26,
         "macd_signal": 9,

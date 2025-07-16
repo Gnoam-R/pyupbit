@@ -54,13 +54,34 @@ class RealAssetManager(BaseAssetManager):
 class VirtualAssetManager(BaseAssetManager):
     """가상 자산 관리 클래스"""
     
-    def __init__(self, target_coin: str, seed_money: float = 1000000):
+    def __init__(self, target_coin: str, seed_money: float = 10000000, use_persistence: bool = True):
         self.target_coin = target_coin
-        self.virtual_assets = {
-            "KRW": seed_money,
-            target_coin: 0.0
-        }
+        self.use_persistence = use_persistence
         self.seed_money = seed_money
+        
+        # 지속성 지원
+        if use_persistence:
+            from ..utils.balance_persistence import BalancePersistence
+            self.persistence = BalancePersistence(target_coin)
+            
+            # 기존 잔고 로드 시도
+            saved_data = self.persistence.load_balance()
+            if saved_data:
+                self.virtual_assets = saved_data["balances"]
+                self.seed_money = saved_data["performance"]["total_value"] - saved_data["performance"]["profit_loss"]
+                logger.info(f"💾 기존 잔고 복원: KRW={self.virtual_assets['KRW']:,.0f}, {target_coin}={self.virtual_assets[target_coin]:.8f}")
+            else:
+                self.virtual_assets = {
+                    "KRW": seed_money,
+                    target_coin: 0.0
+                }
+                logger.info(f"💰 새 잔고 시작: {seed_money:,.0f}원")
+        else:
+            self.virtual_assets = {
+                "KRW": seed_money,
+                target_coin: 0.0
+            }
+            self.persistence = None
     
     def get_balance(self, currency: str) -> float:
         """가상 잔고 조회"""
@@ -123,3 +144,43 @@ class VirtualAssetManager(BaseAssetManager):
                 "profit_loss": 0.0,
                 "profit_rate": 0.0
             }
+    
+    def save_balance(self, position_info: Dict, trading_stats: Dict, current_price: float):
+        """잔고 정보 저장"""
+        if self.persistence:
+            value_info = self.calculate_total_value(current_price)
+            self.persistence.save_balance(
+                krw_balance=self.virtual_assets["KRW"],
+                coin_balance=self.virtual_assets[self.target_coin],
+                total_value=value_info["total_value"],
+                profit_loss=value_info["profit_loss"],
+                profit_rate=value_info["profit_rate"],
+                position_info=position_info,
+                trading_stats=trading_stats
+            )
+    
+    def save_trade_record(self, trade_record: Dict):
+        """거래 기록 저장"""
+        if self.persistence:
+            self.persistence.save_trade_history(trade_record)
+    
+    def get_balance_summary(self) -> str:
+        """잔고 요약 정보"""
+        if self.persistence:
+            return self.persistence.get_balance_summary()
+        else:
+            return "지속성 기능이 비활성화되어 있습니다."
+    
+    def reset_balance(self, initial_krw: float = 10000000):
+        """잔고 초기화"""
+        if self.persistence:
+            self.persistence.reset_balance(initial_krw)
+            # 메모리 상태도 초기화
+            self.virtual_assets = {
+                "KRW": initial_krw,
+                self.target_coin: 0.0
+            }
+            self.seed_money = initial_krw
+            logger.info(f"✅ 잔고 초기화 완료: {initial_krw:,.0f}원")
+        else:
+            logger.warning("지속성 기능이 비활성화되어 있어 초기화할 수 없습니다.")
