@@ -19,6 +19,7 @@ from business_logic.executors.trading_executor import VirtualTradeExecutor
 from business_logic.utils.coin_selector import select_coin, get_coin_name
 from business_logic.utils.logger import setup_logger
 from business_logic.utils.format_helper import format_profit_rate, format_currency, format_percentage
+from business_logic.utils.profit_calculator import calculate_total_profit_summary
 
 # 로깅 설정
 logger = setup_logger('test_trading_simulator', 'test_trading_simulator.log')
@@ -147,9 +148,33 @@ class TestTradingSimulator:
             print("\n" + "=" * 80)
             print("📊 최종 테스트 결과 리포트")
             print("=" * 80)
-            print(f"시드머니: {format_currency(self.seed_money)}")
-            print(f"최종 자산: {format_currency(account_info.get('total_value', 0))}")
-            print(f"총 수익/손실: {format_currency(account_info.get('profit_loss', 0))} ({format_percentage(account_info.get('profit_rate', 0))})")
+            
+            # 정확한 수익 계산
+            current_price = self.engine.get_current_price()
+            if current_price:
+                position = self.engine.get_position_info()
+                profit_summary = calculate_total_profit_summary(
+                    position=position,
+                    current_price=current_price,
+                    initial_seed=self.seed_money,
+                    current_krw=account_info.get('krw_balance', 0),
+                    current_coin=account_info.get('coin_balance', 0)
+                )
+                
+                print(f"시드머니: {format_currency(self.seed_money)}")
+                print(f"최종 자산: {format_currency(profit_summary['total_value'])}")
+                print(f"자산 변화: {format_currency(profit_summary['asset_profit'])} ({format_percentage(profit_summary['asset_profit_rate'])})")
+                
+                if profit_summary['realized_profit'] != 0:
+                    print(f"실현 손익: {format_currency(profit_summary['realized_profit'])}")
+                
+                if profit_summary['unrealized_profit'] != 0:
+                    print(f"미실현 손익: {format_currency(profit_summary['unrealized_profit'])} ({format_profit_rate(profit_summary['unrealized_rate'])})")
+            else:
+                print(f"시드머니: {format_currency(self.seed_money)}")
+                print(f"최종 자산: {format_currency(account_info.get('total_value', 0))}")
+                print(f"총 수익/손실: {format_currency(account_info.get('profit_loss', 0))} ({format_percentage(account_info.get('profit_rate', 0))})")
+            
             print(f"총 거래 수: {stats['total_trades']}")
             
             if stats['total_trades'] > 0:
@@ -241,8 +266,24 @@ def main():
     print("🧪 가상 암호화폐 트레이딩 시뮬레이터 시작")
     print("💡 실제 거래 없이 가상 자산으로 매매 전략을 테스트합니다.")
     
-    # 기본 코인을 BTC로 설정
-    selected_coin = "BTC"
+    # 매매 모드 선택
+    print("\n📋 테스트 모드를 선택하세요:")
+    print("1. 단일 코인 테스트 (기존 방식)")
+    print("2. 다중 코인 테스트 (새로운 방식)")
+    
+    while True:
+        mode_choice = input("\n모드를 선택하세요 (1-2): ").strip()
+        if mode_choice == "1":
+            # 단일 코인 선택
+            selected_coin = select_coin()
+            break
+        elif mode_choice == "2":
+            # 다중 코인 테스트로 이동
+            print("\n다중 코인 테스트는 multi_coin_test_simulator.py를 사용해주세요.")
+            print("python3 multi_coin_test_simulator.py")
+            return
+        else:
+            print("올바른 번호를 입력하세요.")
     
     # 시드머니 설정
     seed_money = 10000000  # 1000만원

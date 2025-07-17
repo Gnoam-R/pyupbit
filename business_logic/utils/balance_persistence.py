@@ -43,16 +43,27 @@ class BalancePersistence:
     
     def save_balance(self, krw_balance: float, coin_balance: float, 
                     total_value: float, profit_loss: float, profit_rate: float,
-                    position_info: Dict, trading_stats: Dict):
+                    position_info: Dict, trading_stats: Dict, seed_money: float = None):
         """잔고 정보 저장"""
         try:
             # datetime 객체를 ISO 형식 문자열로 변환
             position_serializable = self._serialize_datetime_objects(position_info.copy())
             trading_stats_serializable = self._serialize_datetime_objects(trading_stats.copy())
             
+            # 기존 데이터에서 seed_money 가져오기 (없으면 새로 설정)
+            existing_seed_money = None
+            if os.path.exists(self.balance_file):
+                try:
+                    with open(self.balance_file, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                        existing_seed_money = existing_data.get("initial_seed_money")
+                except:
+                    pass
+            
             balance_data = {
                 "coin_symbol": self.coin_symbol,
                 "last_updated": datetime.now().isoformat(),
+                "initial_seed_money": seed_money if seed_money is not None else existing_seed_money,
                 "balances": {
                     "KRW": krw_balance,
                     self.coin_symbol: coin_balance

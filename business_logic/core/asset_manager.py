@@ -49,6 +49,18 @@ class RealAssetManager(BaseAssetManager):
         except Exception as e:
             logger.error(f"계정 정보 조회 오류: {e}")
             return None
+    
+    def check_minimum_balance(self, min_krw: float = 10000) -> bool:
+        """최소 잔고 확인"""
+        try:
+            krw_balance = self.get_balance("KRW")
+            if krw_balance < min_krw:
+                logger.warning(f"⚠️ 원화 잔고 부족: {krw_balance:,.0f}원 (최소 필요: {min_krw:,.0f}원)")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"잔고 확인 오류: {e}")
+            return False
 
 
 class VirtualAssetManager(BaseAssetManager):
@@ -68,8 +80,10 @@ class VirtualAssetManager(BaseAssetManager):
             saved_data = self.persistence.load_balance()
             if saved_data:
                 self.virtual_assets = saved_data["balances"]
-                self.seed_money = saved_data["performance"]["total_value"] - saved_data["performance"]["profit_loss"]
+                # seed_money는 항상 초기 투자금으로 고정
+                self.seed_money = saved_data.get("initial_seed_money", seed_money)
                 logger.info(f"💾 기존 잔고 복원: KRW={self.virtual_assets['KRW']:,.0f}, {target_coin}={self.virtual_assets[target_coin]:.8f}")
+                logger.info(f"💰 초기 시드머니: {self.seed_money:,.0f}원")
             else:
                 self.virtual_assets = {
                     "KRW": seed_money,
@@ -156,7 +170,8 @@ class VirtualAssetManager(BaseAssetManager):
                 profit_loss=value_info["profit_loss"],
                 profit_rate=value_info["profit_rate"],
                 position_info=position_info,
-                trading_stats=trading_stats
+                trading_stats=trading_stats,
+                seed_money=self.seed_money
             )
     
     def save_trade_record(self, trade_record: Dict):

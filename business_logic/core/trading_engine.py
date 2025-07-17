@@ -9,6 +9,7 @@ from .technical_analysis import TechnicalAnalyzer
 from ..strategies.priority_strategy import PriorityTradingStrategy
 from ..utils.config import TradingConfig
 from ..utils.format_helper import format_profit_rate, format_currency, format_percentage
+from ..utils.profit_calculator import calculate_total_profit_summary, get_profit_status_text
 
 logger = logging.getLogger(__name__)
 
@@ -180,8 +181,24 @@ class TradingEngine:
             print(f"{self.target_coin} 잔고: {account_info.get('coin_balance', 0):.8f}{self.target_coin}")
             
             if self.is_test_mode:
-                print(f"총 자산 가치: {format_currency(total_value)}")
-                print(f"총 수익/손실: {format_currency(profit_loss)} ({format_percentage(profit_rate)})")
+                # 정확한 수익 계산
+                seed_money = getattr(self.asset_manager, 'seed_money', 10000000)
+                profit_summary = calculate_total_profit_summary(
+                    position=position,
+                    current_price=current_price,
+                    initial_seed=seed_money,
+                    current_krw=account_info.get('krw_balance', 0),
+                    current_coin=account_info.get('coin_balance', 0)
+                )
+                
+                print(f"총 자산 가치: {format_currency(profit_summary['total_value'])}")
+                print(f"자산 변화: {format_currency(profit_summary['asset_profit'])} ({format_percentage(profit_summary['asset_profit_rate'])})")
+                
+                if profit_summary['realized_profit'] != 0:
+                    print(f"실현 손익: {format_currency(profit_summary['realized_profit'])}")
+                
+                if profit_summary['unrealized_profit'] != 0:
+                    print(f"미실현 손익: {format_currency(profit_summary['unrealized_profit'])} ({format_profit_rate(profit_summary['unrealized_rate'])})")
             
             if position["is_holding"]:
                 current_profit_rate = (current_price - position["buy_price"]) / position["buy_price"]
@@ -194,11 +211,7 @@ class TradingEngine:
             if stats['total_trades'] > 0:
                 print(f"승률: {stats['win_count']}/{stats['total_trades']} ({format_percentage(stats['win_rate'])})")
                 print(f"평균 거래당 수익: {format_currency(stats['avg_profit_per_trade'])}")
-            print(f"누적 거래 수익: {format_currency(stats['total_profit'])}")
-            
-            # 가상 모드에서는 총 수익률도 표시
-            if self.is_test_mode and abs(profit_rate) >= 0.01:  # 0.01% 이상만 표시
-                print(f"총 수익률: {format_percentage(profit_rate)} (자산 증감: {format_currency(profit_loss)})")
+            print(f"거래 수익: {format_currency(stats['total_profit'])}")
             print("=" * 80)
             
         except Exception as e:

@@ -51,9 +51,9 @@ class PositionManager:
         profit = (sell_price - self.position["buy_price"]) * sell_amount
         profit_rate = (sell_price - self.position["buy_price"]) / self.position["buy_price"]
         
-        # 통계 업데이트
+        # 통계 업데이트 - 매도 거래만 거래 완료로 카운트
         self.position["total_profit"] += profit
-        self.position["total_trades"] += 1
+        # total_trades는 매수할 때 이미 증가되었으므로 여기서는 증가시키지 않음
         
         if profit > 0:
             self.position["win_count"] += 1
@@ -61,7 +61,7 @@ class PositionManager:
             self.position["loss_count"] += 1
         
         # 포지션 정리 - 실제 잔고 기준으로 동기화
-        remaining_amount = actual_balance - sell_amount
+        remaining_amount = actual_balance
         
         # 매우 작은 잔량이거나 0이면 완전 정리
         if remaining_amount <= 0.00000001:

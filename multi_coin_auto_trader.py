@@ -2,65 +2,58 @@
 # -*- coding: utf-8 -*-
 
 """
-실제 암호화폐 자동 매매 프로그램
+다중 코인 암호화폐 자동 매매 프로그램
 
-실제 업비트 API를 사용하여 실제 자산으로 매매를 수행합니다.
+여러 코인을 동시에 모니터링하고 자동 매매를 수행합니다.
 """
 
 import pyupbit
+import time
 import os
 import sys
 
 # Business Logic Imports
-from business_logic.core.trading_engine import TradingEngine
+from business_logic.core.multi_coin_engine import MultiCoinTradingEngine
 from business_logic.core.asset_manager import RealAssetManager
 from business_logic.executors.trading_executor import RealTradeExecutor
-from business_logic.utils.coin_selector import select_coin, get_coin_name
+from business_logic.utils.coin_selector import select_coins, get_all_coin_names
 from business_logic.utils.logger import setup_logger
-from business_logic.utils.format_helper import format_profit_rate, format_currency, format_percentage
+from business_logic.utils.format_helper import format_currency
 
 # 로깅 설정
-logger = setup_logger('bitcoin_auto_trader', 'bitcoin_trader.log')
+logger = setup_logger('multi_coin_auto_trader', 'multi_coin_trader.log')
 
 
-class RealCryptoTrader:
-    """실제 암호화폐 자동 매매 클래스"""
+class MultiCoinRealTrader:
+    """다중 코인 실제 암호화폐 자동 매매 클래스"""
     
-    def __init__(self, access_key: str, secret_key: str, target_coin: str):
-        """
-        실제 트레이더 초기화
-        
-        Args:
-            access_key: 업비트 API 액세스 키
-            secret_key: 업비트 API 시크릿 키
-            target_coin: 대상 코인 심볼
-        """
-        self.target_coin = target_coin
+    def __init__(self, access_key: str, secret_key: str, target_coins: list):
         self.upbit = pyupbit.Upbit(access_key, secret_key)
+        self.target_coins = target_coins
         
-        # 실제 모드 매니저들 초기화
-        self.asset_manager = RealAssetManager(self.upbit, target_coin)
-        self.trade_executor = RealTradeExecutor(self.upbit, target_coin)
+        # 비즈니스 로직 모듈 초기화
+        self.asset_manager = RealAssetManager(self.upbit, target_coins[0])  # 첫 번째 코인을 기본으로 설정
+        self.trade_executor = RealTradeExecutor(self.upbit, target_coins[0])
         
-        # 트레이딩 엔진 초기화 (실제 모드)
-        self.engine = TradingEngine(
-            target_coin=target_coin,
-            asset_manager=self.asset_manager,
-            trade_executor=self.trade_executor,
+        # 다중 코인 엔진 초기화
+        self.engine = MultiCoinTradingEngine(
+            target_coins, 
+            self.asset_manager, 
+            self.trade_executor,
             is_test_mode=False
         )
         
-        logger.info(f"실제 트레이더 초기화 완료 - 대상 코인: {get_coin_name(target_coin)}")
+        logger.info(f"다중 코인 트레이더 초기화 완료 - 대상 코인: {', '.join(target_coins)}")
     
     def validate_api_keys(self) -> bool:
-        """API 키 유효성 검증"""
+        """API 키 유효성 검사"""
         try:
-            account_info = self.asset_manager.get_account_info()
-            if account_info is None:
-                logger.error("API 키 검증 실패: 계정 정보를 가져올 수 없습니다.")
+            balances = self.upbit.get_balances()
+            if balances is None:
+                logger.error("API 키 검증 실패: 잔고 조회 불가")
                 return False
             
-            logger.info("API 키 검증 성공")
+            logger.info("✅ API 키 검증 성공")
             return True
         except Exception as e:
             logger.error(f"API 키 검증 오류: {e}")
@@ -70,19 +63,27 @@ class RealCryptoTrader:
         """계정 요약 정보 출력"""
         try:
             account_info = self.asset_manager.get_account_info()
-            current_price = self.engine.get_current_price()
-            
             if not account_info:
-                print("계정 정보를 가져올 수 없습니다.")
-                return False
+                logger.error("계정 정보 조회 실패")
+                return
             
-            print("=" * 60)
-            print(f"🪙 {get_coin_name(self.target_coin)} 실제 자동 매매 프로그램")
-            print("=" * 60)
-            print(f"현재 가격: {format_currency(current_price) if current_price else 'N/A'}")
+            print("=" * 80)
+            print(f"🪙 {get_all_coin_names(self.target_coins)} 다중 코인 자동 매매 프로그램")
+            print("=" * 80)
             print(f"원화 잔고: {format_currency(account_info['krw_balance'])}")
-            print(f"{self.target_coin} 잔고: {account_info['coin_balance']:.8f}{self.target_coin}")
-            print("=" * 60)
+            
+            # 각 코인별 잔고 표시
+            for coin in self.target_coins:
+                coin_balance = self.asset_manager.get_balance(coin)
+                current_price = self.engine.get_current_price(coin)
+                
+                if coin_balance > 0:
+                    coin_value = coin_balance * current_price if current_price else 0
+                    print(f"{coin} 잔고: {coin_balance:.8f} (약 {format_currency(coin_value)})")
+                else:
+                    print(f"{coin} 잔고: 0")
+            
+            print("=" * 80)
             
             # 최소 잔고 확인
             if not self.asset_manager.check_minimum_balance(10000):
@@ -97,6 +98,12 @@ class RealCryptoTrader:
     
     def start_trading(self):
         """자동 매매 시작"""
+        # 시작 전 최종 잔고 확인
+        if not self.asset_manager.check_minimum_balance(10000):
+            print("🚫 잔고 부족으로 자동 매매를 시작할 수 없습니다.")
+            return
+        
+        print(f"🚀 {get_all_coin_names(self.target_coins)} 자동 매매 시작!")
         self.engine.start_trading()
     
     def stop_trading(self):
@@ -106,18 +113,6 @@ class RealCryptoTrader:
     def print_status(self):
         """현재 상태 출력"""
         self.engine.print_status()
-    
-    def get_config(self):
-        """현재 설정 조회"""
-        return self.engine.get_config()
-    
-    def save_config(self):
-        """설정 저장"""
-        self.engine.save_config()
-    
-    def load_config(self):
-        """설정 로드"""
-        self.engine.load_config()
 
 
 def load_api_keys() -> tuple:
@@ -141,7 +136,7 @@ def load_api_keys() -> tuple:
                     logger.info("파일에서 API 키 로드 완료")
                     return access_key, secret_key
         
-        logger.error("API 키를 찾을 수 없습니다.")
+        logger.error("API 키를 찾을 수 없습니다")
         return None, None
         
     except Exception as e:
@@ -151,7 +146,7 @@ def load_api_keys() -> tuple:
 
 def main():
     """메인 함수"""
-    print("🚀 실제 암호화폐 자동 매매 프로그램 시작")
+    print("🚀 다중 코인 암호화폐 자동 매매 프로그램 시작")
     print("⚠️  주의: 이 프로그램은 실제 자산으로 거래를 수행합니다!")
     
     # API 키 로드
@@ -166,87 +161,58 @@ def main():
         print("  두 번째 줄: secret_key")
         return
     
-    # 매매 모드 선택
-    print("\n📋 매매 모드를 선택하세요:")
-    print("1. 단일 코인 매매 (기존 방식)")
-    print("2. 다중 코인 매매 (새로운 방식)")
+    # 다중 코인 선택
+    selected_coins = select_coins(multi=True)
     
-    while True:
-        mode_choice = input("\n모드를 선택하세요 (1-2): ").strip()
-        if mode_choice == "1":
-            # 단일 코인 선택
-            selected_coin = select_coin()
-            break
-        elif mode_choice == "2":
-            # 다중 코인 매매로 이동
-            print("\n다중 코인 매매는 multi_coin_auto_trader.py를 사용해주세요.")
-            print("python3 multi_coin_auto_trader.py")
-            return
-        else:
-            print("올바른 번호를 입력하세요.")
+    if not selected_coins:
+        print("❌ 코인이 선택되지 않았습니다.")
+        return
     
     # 트레이더 초기화
-    trader = RealCryptoTrader(access_key, secret_key, selected_coin)
+    trader = MultiCoinRealTrader(access_key, secret_key, selected_coins)
     
     # API 키 검증
     if not trader.validate_api_keys():
         print("❌ API 키 검증 실패. 키를 확인해주세요.")
         return
     
-    # 계정 요약 정보 출력 및 잔고 확인
+    # 계정 요약 정보 출력
     if not trader.print_account_summary():
         print("❌ 계정 정보 조회 실패 또는 잔고 부족")
         return
     
     # 사용자 입력 처리
-    print("\n📋 사용 가능한 명령어:")
+    print("\\n📋 사용 가능한 명령어:")
     print("  start  - 자동 매매 시작")
     print("  stop   - 자동 매매 중지")
     print("  status - 현재 상태 확인")
-    print("  config - 현재 설정 보기")
     print("  quit   - 프로그램 종료")
     
     while True:
         try:
-            command = input("\n명령어를 입력하세요: ").strip().lower()
+            command = input("\\n명령어를 입력하세요: ").strip().lower()
             
             if command == "start":
-                # 시작 전 최종 잔고 확인
-                account_info = trader.asset_manager.get_account_info()
-                if not account_info or not trader.asset_manager.check_minimum_balance(10000):
-                    print("🚫 잔고 부족으로 자동 매매를 시작할 수 없습니다.")
-                    continue
-                
                 print("🚀 자동 매매를 시작합니다...")
                 trader.start_trading()
-                
             elif command == "stop":
                 print("🛑 자동 매매를 중지합니다...")
                 trader.stop_trading()
-                
             elif command == "status":
                 trader.print_status()
-                
-            elif command == "config":
-                print("⚙️ 현재 설정:")
-                config = trader.get_config()
-                for key, value in config.items():
-                    print(f"  {key}: {value}")
-                    
             elif command == "quit":
-                print("👋 프로그램을 종료합니다...")
+                print("👋 프로그램을 종료합니다.")
                 trader.stop_trading()
                 break
-                
             else:
                 print("❌ 올바른 명령어를 입력하세요.")
                 
         except KeyboardInterrupt:
-            print("\n🛑 프로그램을 중지합니다...")
+            print("\\n👋 프로그램을 종료합니다.")
             trader.stop_trading()
             break
         except Exception as e:
-            logger.error(f"명령어 처리 오류: {e}")
+            logger.error(f"명령 처리 오류: {e}")
             print(f"❌ 오류가 발생했습니다: {e}")
 
 
