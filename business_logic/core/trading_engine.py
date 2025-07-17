@@ -6,7 +6,7 @@ import schedule
 
 from .market_data import MarketDataProvider
 from .technical_analysis import TechnicalAnalyzer
-from ..strategies.technical_strategy import TechnicalTradingStrategy
+from ..strategies.priority_strategy import PriorityTradingStrategy
 from ..utils.config import TradingConfig
 from ..utils.format_helper import format_profit_rate, format_currency, format_percentage
 
@@ -27,7 +27,7 @@ class TradingEngine:
         self.config_manager = TradingConfig()
         self.market_data = MarketDataProvider(target_coin)
         self.technical_analyzer = TechnicalAnalyzer()
-        self.strategy = TechnicalTradingStrategy(
+        self.strategy = PriorityTradingStrategy(
             self.config_manager.get_config(), 
             self.technical_analyzer, 
             is_test_mode=is_test_mode
@@ -69,7 +69,8 @@ class TradingEngine:
             # 손절/익절 확인
             stop_action = self.strategy.check_stop_loss_take_profit(current_price)
             if stop_action:
-                self.execute_sell_order(current_price, stop_action)
+                stop_info = {'selected_strategy': f'손절/익절 ({stop_action})'}
+                self.execute_sell_order(current_price, stop_action, stop_info)
                 return
             
             # OHLCV 데이터 조회
@@ -88,12 +89,14 @@ class TradingEngine:
             position = self.get_position_info()
             if not position["is_holding"]:
                 # 매수 신호 확인
-                if self.strategy.generate_buy_signal(df, indicators):
-                    self.execute_buy_order(current_price)
+                should_buy, buy_info = self.strategy.generate_buy_signal(df, indicators)
+                if should_buy:
+                    self.execute_buy_order(current_price, buy_info)
             else:
                 # 매도 신호 확인
-                if self.strategy.generate_sell_signal(df, indicators):
-                    self.execute_sell_order(current_price, "signal")
+                should_sell, sell_info = self.strategy.generate_sell_signal(df, indicators)
+                if should_sell:
+                    self.execute_sell_order(current_price, "signal", sell_info)
             
             # 가상 모드에서는 주기적으로 잔고 저장
             if self.is_test_mode and hasattr(self.asset_manager, 'save_balance'):
@@ -106,7 +109,7 @@ class TradingEngine:
         except Exception as e:
             logger.error(f"트레이딩 루프 오류: {e}")
     
-    def execute_buy_order(self, current_price: float) -> bool:
+    def execute_buy_order(self, current_price: float, strategy_info: Dict = None) -> bool:
         """매수 주문 실행"""
         config = self.config_manager.get_config()
         result = self.trade_executor.execute_buy_order(current_price, config, self.asset_manager)
@@ -115,9 +118,14 @@ class TradingEngine:
             buy_amount = self.asset_manager.get_balance("KRW") * config["buy_ratio"]
             buy_volume = buy_amount / current_price
             self.strategy.get_position_manager().open_position(current_price, buy_volume)
+            
+            # 전략 정보 로그 기록
+            if strategy_info and 'selected_strategy' in strategy_info:
+                strategy_name = self.strategy.strategy_names.get(strategy_info['selected_strategy'], strategy_info['selected_strategy'])
+                logger.info(f"🟢 매수 실행 완료 - 사용 전략: {strategy_name}")
         return result
     
-    def execute_sell_order(self, current_price: float, reason: str = "signal") -> bool:
+    def execute_sell_order(self, current_price: float, reason: str = "signal", strategy_info: Dict = None) -> bool:
         """매도 주문 실행"""
         config = self.config_manager.get_config()
         position = self.get_position_info()
@@ -135,6 +143,11 @@ class TradingEngine:
                 actual_coin_balance,
                 reason
             )
+            
+            # 전략 정보 로그 기록
+            if strategy_info and 'selected_strategy' in strategy_info:
+                strategy_name = self.strategy.strategy_names.get(strategy_info['selected_strategy'], strategy_info['selected_strategy'])
+                logger.info(f"🔴 매도 실행 완료 - 사용 전략: {strategy_name}")
         return result
     
     def print_status(self):
